@@ -12,7 +12,14 @@ from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE,
     HVAC_MODE_OFF,
 )
-from homeassistant.components.fan import SPEED_HIGH, SPEED_LOW, SPEED_MEDIUM
+# from homeassistant.components.fan import SPEED_HIGH, SPEED_LOW, SPEED_MEDIUM
+#hass6.6 removed the components fan
+#added by muchamucha
+SPEED_OFF = "Speed_Off"
+SPEED_LOW = "Speed_Low"
+SPEED_MEDIUM = "Speed_Medium"
+SPEED_HIGH = "Speed_High"
+
 from homeassistant.const import (
     ATTR_TEMPERATURE,
     PRECISION_WHOLE,

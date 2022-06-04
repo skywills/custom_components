@@ -4,6 +4,19 @@ lifesmart 设备接入 HomeAssistant插件
 
 更新说明
 -------  
+[2022年6月1日更新]
+增加了登录接口，在configuration.yaml文件中的格式变更为
+```
+lifesmart:
+  appkey: "your_appkey" 
+  apptoken: "your_apptoken"
+  username: "your_username" 
+  password: "your_password"
+  exclude:
+    - "0011" #需屏蔽设备的me值,这个暂时为必填项，可以填任意内容
+```
+修复因HomeAssistant Core升级后造成的组件失效，但对2022.6之前的Hass Core 将不支持。
+
 [2020年12月26日更新]
 
 支持流光开关灯光控制
