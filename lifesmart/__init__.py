@@ -27,7 +27,8 @@ from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE,
     HVAC_MODE_OFF,
 )
-from homeassistant.components.fan import SPEED_HIGH, SPEED_LOW, SPEED_MEDIUM
+
+#hass core 2022.6 removed the components.fan.by muchamucha
 from homeassistant.core import callback
 from homeassistant.helpers import discovery
 import homeassistant.helpers.config_validation as cv
@@ -37,11 +38,20 @@ from homeassistant.util.dt import utcnow
 
 _LOGGER = logging.getLogger(__name__)
 
+# added by muchamucha
+SPEED_OFF = "Speed_Off"
+SPEED_LOW = "Speed_Low"
+SPEED_MEDIUM = "Speed_Medium"
+SPEED_HIGH = "Speed_High"
+
 CONF_LIFESMART_APPKEY = "appkey"
 CONF_LIFESMART_APPTOKEN = "apptoken"
-CONF_LIFESMART_USERTOKEN = "usertoken"
-CONF_LIFESMART_USERID = "userid"
+CONF_LIFESMART_USERTOKEN = "usertoken" #should be deleted
+CONF_LIFESMART_USERID = "userid" #should be deleted
 CONF_EXCLUDE_ITEMS = "exclude"
+#added by muchamucha
+CONF_LIFESMART_USERNAME = "username"
+CONF_LIFESMART_PASSWORD = "password"
 SWTICH_TYPES = ["SL_SF_RC",
 "SL_SW_RC",
 "SL_SW_IF3",
@@ -133,6 +143,48 @@ DOMAIN = 'lifesmart'
 
 LifeSmart_STATE_MANAGER = 'lifesmart_wss'
 
+"""This function created by muchamucha"""
+"""Login to the server and get the token and userid"""
+def lifesmart_Login(uid,pwd,appkey):
+    url = "https://api.ilifesmart.com/app/auth.login"
+
+    payload = json.dumps({
+      "uid": uid,
+      "pwd": pwd,
+      "appkey": appkey
+    })
+    headers = {'Content-Type': 'application/json'}
+
+    req = urllib.request.Request(url=url, data=payload.encode('utf-8'),headers=headers, method='POST')
+    response = json.loads(urllib.request.urlopen(req).read().decode('utf-8'))
+    if response['code'] == "success":
+        return response
+    else:
+        return False
+
+"""This function created by muchamucha"""
+"""Then, authenticating the user, get the usertoken"""
+def lifesmart_doAuth(userid,token,appkey):
+    url = "https://api.ilifesmart.com/app/auth.do_auth"
+
+    payload = json.dumps({
+      "userid": userid,
+      "token": token,
+      "appkey": appkey,
+      "rgn": "cn"
+    })
+    headers = {
+      'Content-Type': 'application/json'
+    }
+
+    req = urllib.request.Request(url=url, data=payload.encode('utf-8'),headers=headers, method='POST')
+    response = json.loads(urllib.request.urlopen(req).read().decode('utf-8'))
+    if response['code'] == "success":
+        return response
+    else:
+        return False
+
+#origin
 
 def lifesmart_EpGetAll(appkey,apptoken,usertoken,userid):
     url = "https://api.ilifesmart.com/app/api.EpGetAll"
