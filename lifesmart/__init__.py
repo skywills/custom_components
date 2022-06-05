@@ -289,8 +289,20 @@ def setup(hass, config):
     param = {}
     param['appkey'] = config[DOMAIN][CONF_LIFESMART_APPKEY]
     param['apptoken'] = config[DOMAIN][CONF_LIFESMART_APPTOKEN]
-    param['usertoken'] = config[DOMAIN][CONF_LIFESMART_USERTOKEN]
-    param['userid'] = config[DOMAIN][CONF_LIFESMART_USERID]
+    # param['usertoken'] = config[DOMAIN][CONF_LIFESMART_USERTOKEN]
+    # param['userid'] = config[DOMAIN][CONF_LIFESMART_USERID]
+
+    """This part of code is created by muchamucha"""
+    """Login and authenticate the user"""
+    param['username'] = config[DOMAIN][CONF_LIFESMART_USERNAME]
+    param['pwd'] = config[DOMAIN][CONF_LIFESMART_PASSWORD]
+    res_login = lifesmart_Login(param['username'],param['pwd'],param['appkey'])
+    param['token'] = res_login['token']
+    param['userid'] = res_login['userid']
+    res_doauth = lifesmart_doAuth(param['userid'],param['token'],param['appkey'])
+    param['usertoken'] = res_doauth['usertoken']
+
+    """origin"""
     exclude_items = config[DOMAIN][CONF_EXCLUDE_ITEMS]
     devices = lifesmart_EpGetAll(param['appkey'],param['apptoken'],param['usertoken'],param['userid'])
     for dev in devices:
