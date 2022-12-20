@@ -1,4 +1,23 @@
 """lifesmart by @skyzhishui"""
+from homeassistant.util.dt import utcnow
+from homeassistant.helpers.event import async_track_point_in_utc_time
+from homeassistant.helpers.entity import Entity
+import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers import discovery
+from homeassistant.core import callback
+from homeassistant.components.climate.const import (
+    HVAC_MODE_AUTO,
+    HVAC_MODE_COOL,
+    HVAC_MODE_FAN_ONLY,
+    HVAC_MODE_HEAT,
+    HVAC_MODE_DRY,
+    SUPPORT_FAN_MODE,
+    SUPPORT_TARGET_TEMPERATURE,
+    HVAC_MODE_OFF,
+)
+from homeassistant.const import (
+    CONF_FRIENDLY_NAME,
+)
 import subprocess
 import urllib.request
 import json
@@ -14,27 +33,8 @@ import voluptuous as vol
 import sys
 sys.setrecursionlimit(100000)
 
-from homeassistant.const import (
-    CONF_FRIENDLY_NAME,
-)
-from homeassistant.components.climate.const import (
-    HVAC_MODE_AUTO,
-    HVAC_MODE_COOL,
-    HVAC_MODE_FAN_ONLY,
-    HVAC_MODE_HEAT,
-    HVAC_MODE_DRY,
-    SUPPORT_FAN_MODE,
-    SUPPORT_TARGET_TEMPERATURE,
-    HVAC_MODE_OFF,
-)
 
-#hass core 2022.6 removed the components.fan.by muchamucha
-from homeassistant.core import callback
-from homeassistant.helpers import discovery
-import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.entity import Entity
-from homeassistant.helpers.event import async_track_point_in_utc_time
-from homeassistant.util.dt import utcnow
+# hass core 2022.6 removed the components.fan.by muchamucha
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,97 +46,97 @@ SPEED_HIGH = "Speed_High"
 
 CONF_LIFESMART_APPKEY = "appkey"
 CONF_LIFESMART_APPTOKEN = "apptoken"
-CONF_LIFESMART_USERTOKEN = "usertoken" #should be deleted
-CONF_LIFESMART_USERID = "userid" #should be deleted
+CONF_LIFESMART_USERTOKEN = "usertoken"  # should be deleted
+CONF_LIFESMART_USERID = "userid"  # should be deleted
 CONF_EXCLUDE_ITEMS = "exclude"
-#added by muchamucha
+# added by muchamucha
 CONF_LIFESMART_USERNAME = "username"
 CONF_LIFESMART_PASSWORD = "password"
 SWTICH_TYPES = ["SL_SF_RC",
-"SL_SW_RC",
-"SL_SW_IF3",
-"SL_SF_IF3",
-"SL_SW_CP3",
-"SL_SW_RC3",
-"SL_SW_IF2",
-"SL_SF_IF2",
-"SL_SW_CP2",
-"SL_SW_FE2",
-"SL_SW_RC2",
-"SL_SW_ND2",
-"SL_MC_ND2",
-"SL_SW_IF1",
-"SL_SF_IF1",
-"SL_SW_CP1",
-"SL_SW_FE1",
-"SL_OL_W",
-"SL_SW_RC1",
-"SL_SW_ND1",
-"SL_MC_ND1",
-"SL_SW_ND3",
-"SL_MC_ND3",
-"SL_SW_ND2",
-"SL_MC_ND2",
-"SL_SW_ND1",
-"SL_MC_ND1",
-"SL_S",
-"SL_SPWM",
-"SL_P_SW",
-"SL_SW_DM1",
-"SL_SW_MJ2",
-"SL_SW_MJ1",
-"SL_OL",
-"SL_OL_3C",
-"SL_OL_DE",
-"SL_OL_UK",
-"SL_OL_UL",
-"OD_WE_OT1",
-"SL_NATURE"
-]
+                "SL_SW_RC",
+                "SL_SW_IF3",
+                "SL_SF_IF3",
+                "SL_SW_CP3",
+                "SL_SW_RC3",
+                "SL_SW_IF2",
+                "SL_SF_IF2",
+                "SL_SW_CP2",
+                "SL_SW_FE2",
+                "SL_SW_RC2",
+                "SL_SW_ND2",
+                "SL_MC_ND2",
+                "SL_SW_IF1",
+                "SL_SF_IF1",
+                "SL_SW_CP1",
+                "SL_SW_FE1",
+                "SL_OL_W",
+                "SL_SW_RC1",
+                "SL_SW_ND1",
+                "SL_MC_ND1",
+                "SL_SW_ND3",
+                "SL_MC_ND3",
+                "SL_SW_ND2",
+                "SL_MC_ND2",
+                "SL_SW_ND1",
+                "SL_MC_ND1",
+                "SL_S",
+                "SL_SPWM",
+                "SL_P_SW",
+                "SL_SW_DM1",
+                "SL_SW_MJ2",
+                "SL_SW_MJ1",
+                "SL_OL",
+                "SL_OL_3C",
+                "SL_OL_DE",
+                "SL_OL_UK",
+                "SL_OL_UL",
+                "OD_WE_OT1",
+                "SL_NATURE"
+                ]
 LIGHT_SWITCH_TYPES = ["SL_OL_W",
-"SL_SW_IF1",
-"SL_SW_IF2",
-"SL_SW_IF3",
-]
-QUANTUM_TYPES=["OD_WE_QUAN",
-]
+                      "SL_SW_IF1",
+                      "SL_SW_IF2",
+                      "SL_SW_IF3",
+                      ]
+QUANTUM_TYPES = ["OD_WE_QUAN",
+                 ]
 
 SPOT_TYPES = ["MSL_IRCTL",
-"OD_WE_IRCTL",
-"SL_SPOT"]
+              "OD_WE_IRCTL",
+              "SL_SPOT"]
 BINARY_SENSOR_TYPES = ["SL_SC_G",
-"SL_SC_BG",
-"SL_SC_MHW ",
-"SL_SC_BM",
-"SL_SC_CM",
-"SL_P_A"]
+                       "SL_SC_BG",
+                       "SL_SC_MHW ",
+                       "SL_SC_BM",
+                       "SL_SC_CM",
+                       "SL_P_A"]
 COVER_TYPES = ["SL_DOOYA"]
 GAS_SENSOR_TYPES = ["SL_SC_WA ",
-"SL_SC_CH",
-"SL_SC_CP",
-"ELIQ_EM"]
+                    "SL_SC_CH",
+                    "SL_SC_CP",
+                    "ELIQ_EM"]
 EV_SENSOR_TYPES = ["SL_SC_THL",
-"SL_SC_BE",
-"SL_SC_CQ"]
+                   "SL_SC_BE",
+                   "SL_SC_CQ"]
 OT_SENSOR_TYPES = ["SL_SC_MHW",
-"SL_SC_BM",
-"SL_SC_G",
-"SL_SC_BG"]
+                   "SL_SC_BM",
+                   "SL_SC_G",
+                   "SL_SC_BG"]
 LOCK_TYPES = ["SL_LK_LS",
-"SL_LK_GTM",
-"SL_LK_AG",
-"SL_LK_SG",
-"SL_LK_YL"]
+              "SL_LK_GTM",
+              "SL_LK_AG",
+              "SL_LK_SG",
+              "SL_LK_YL"]
 
 LIFESMART_STATE_LIST = [HVAC_MODE_OFF,
-HVAC_MODE_AUTO,
-HVAC_MODE_FAN_ONLY,
-HVAC_MODE_COOL,
-HVAC_MODE_HEAT,
-HVAC_MODE_DRY]
+                        HVAC_MODE_AUTO,
+                        HVAC_MODE_FAN_ONLY,
+                        HVAC_MODE_COOL,
+                        HVAC_MODE_HEAT,
+                        HVAC_MODE_DRY]
 
 CLIMATE_TYPES = ["V_AIR_P",
-"SL_CP_DN"]
+                 "SL_CP_DN"]
 
 ENTITYID = 'entity_id'
 DOMAIN = 'lifesmart'
@@ -145,187 +145,203 @@ LifeSmart_STATE_MANAGER = 'lifesmart_wss'
 
 """This function created by muchamucha"""
 """Login to the server and get the token and userid"""
-def lifesmart_Login(uid,pwd,appkey):
-    url = "https://api.ilifesmart.com/app/auth.login"
+
+
+def lifesmart_Login(uid, pwd, appkey):
+    url = "https://api.apz.ilifesmart.com/app/auth.login"
 
     payload = json.dumps({
-      "uid": uid,
-      "pwd": pwd,
-      "appkey": appkey
+        "uid": uid,
+        "pwd": pwd,
+        "appkey": appkey
     })
     headers = {'Content-Type': 'application/json'}
 
-    req = urllib.request.Request(url=url, data=payload.encode('utf-8'),headers=headers, method='POST')
+    req = urllib.request.Request(url=url, data=payload.encode(
+        'utf-8'), headers=headers, method='POST')
     response = json.loads(urllib.request.urlopen(req).read().decode('utf-8'))
     if response['code'] == "success":
         return response
     else:
         return False
+
 
 """This function created by muchamucha"""
 """Then, authenticating the user, get the usertoken"""
-def lifesmart_doAuth(userid,token,appkey):
-    url = "https://api.ilifesmart.com/app/auth.do_auth"
+
+
+def lifesmart_doAuth(userid, token, appkey):
+    url = "https://api.apz.ilifesmart.com/app/auth.do_auth"
 
     payload = json.dumps({
-      "userid": userid,
-      "token": token,
-      "appkey": appkey,
-      "rgn": "cn"
+        "userid": userid,
+        "token": token,
+        "appkey": appkey,
+        "rgn": "apz"
     })
     headers = {
-      'Content-Type': 'application/json'
+        'Content-Type': 'application/json'
     }
 
-    req = urllib.request.Request(url=url, data=payload.encode('utf-8'),headers=headers, method='POST')
+    req = urllib.request.Request(url=url, data=payload.encode(
+        'utf-8'), headers=headers, method='POST')
     response = json.loads(urllib.request.urlopen(req).read().decode('utf-8'))
     if response['code'] == "success":
         return response
     else:
         return False
 
-#origin
+# origin
 
-def lifesmart_EpGetAll(appkey,apptoken,usertoken,userid):
-    url = "https://api.ilifesmart.com/app/api.EpGetAll"
+
+def lifesmart_EpGetAll(appkey, apptoken, usertoken, userid):
+    url = "https://api.apz.ilifesmart.com/app/api.EpGetAll"
     tick = int(time.time())
-    sdata = "method:EpGetAll,time:"+str(tick)+",userid:"+userid+",usertoken:"+usertoken+",appkey:"+appkey+",apptoken:"+apptoken
+    sdata = "method:EpGetAll,time:" + \
+        str(tick)+",userid:"+userid+",usertoken:" + \
+        usertoken+",appkey:"+appkey+",apptoken:"+apptoken
     sign = hashlib.md5(sdata.encode(encoding='UTF-8')).hexdigest()
-    send_values ={
-      "id": 1,
-      "method": "EpGetAll",
-      "system": {
-      "ver": "1.0",
-      "lang": "en",
-      "userid": userid,
-      "appkey": appkey,
-      "time": tick,
-      "sign": sign
-      }
+    send_values = {
+        "id": 1,
+        "method": "EpGetAll",
+        "system": {
+            "ver": "1.0",
+            "lang": "en",
+            "userid": userid,
+            "appkey": appkey,
+            "time": tick,
+            "sign": sign
+        }
     }
     header = {'Content-Type': 'application/json'}
     send_data = json.dumps(send_values)
-    req = urllib.request.Request(url=url, data=send_data.encode('utf-8'), headers=header, method='POST')
+    req = urllib.request.Request(url=url, data=send_data.encode(
+        'utf-8'), headers=header, method='POST')
     response = json.loads(urllib.request.urlopen(req).read().decode('utf-8'))
     if response['code'] == 0:
         return response['message']
     return False
 
 
-def lifesmart_Sendkeys(appkey,apptoken,usertoken,userid,agt,ai,me,category,brand,keys):
-    url = "https://api.ilifesmart.com/app/irapi.SendKeys"
+def lifesmart_Sendkeys(appkey, apptoken, usertoken, userid, agt, ai, me, category, brand, keys):
+    url = "https://api.apz.ilifesmart.com/app/irapi.SendKeys"
     tick = int(time.time())
     #keys = str(keys)
-    sdata = "method:SendKeys,agt:"+agt+",ai:"+ai+",brand:"+brand+",category:"+category+",keys:"+keys+",me:"+me+",time:"+str(tick)+",userid:"+userid+",usertoken:"+usertoken+",appkey:"+appkey+",apptoken:"+apptoken
+    sdata = "method:SendKeys,agt:"+agt+",ai:"+ai+",brand:"+brand+",category:"+category+",keys:"+keys+",me:" + \
+        me+",time:"+str(tick)+",userid:"+userid+",usertoken:" + \
+        usertoken+",appkey:"+appkey+",apptoken:"+apptoken
     sign = hashlib.md5(sdata.encode(encoding='UTF-8')).hexdigest()
-    _LOGGER.debug("sendkey: %s",str(sdata))
-    send_values ={
-      "id": 1,
-      "method": "SendKeys",
-      "params": {
-          "agt": agt,
-          "me": me,
-          "category": category,
-          "brand": brand,
-          "ai": ai,
-          "keys": keys
-      },
-      "system": {
-      "ver": "1.0",
-      "lang": "en",
-      "userid": userid,
-      "appkey": appkey,
-      "time": tick,
-      "sign": sign
-      }
+    _LOGGER.debug("sendkey: %s", str(sdata))
+    send_values = {
+        "id": 1,
+        "method": "SendKeys",
+        "params": {
+            "agt": agt,
+            "me": me,
+            "category": category,
+            "brand": brand,
+            "ai": ai,
+            "keys": keys
+        },
+        "system": {
+            "ver": "1.0",
+            "lang": "en",
+            "userid": userid,
+            "appkey": appkey,
+            "time": tick,
+            "sign": sign
+        }
     }
     header = {'Content-Type': 'application/json'}
     send_data = json.dumps(send_values)
-    req = urllib.request.Request(url=url, data=send_data.encode('utf-8'), headers=header, method='POST')
+    req = urllib.request.Request(url=url, data=send_data.encode(
+        'utf-8'), headers=header, method='POST')
     response = json.loads(urllib.request.urlopen(req).read().decode('utf-8'))
-    _LOGGER.debug("sendkey_res: %s",str(response))
+    _LOGGER.debug("sendkey_res: %s", str(response))
     return response
-def lifesmart_Sendackeys(appkey,apptoken,usertoken,userid,agt,ai,me,category,brand,keys,power,mode,temp,wind,swing):                                                                             
-    url = "https://api.ilifesmart.com/app/irapi.SendACKeys"                                                                                                        
-    tick = int(time.time())       
+
+
+def lifesmart_Sendackeys(appkey, apptoken, usertoken, userid, agt, ai, me, category, brand, keys, power, mode, temp, wind, swing):
+    url = "https://api.apz.ilifesmart.com/app/irapi.SendACKeys"
+    tick = int(time.time())
     #keys = str(keys)
-    sdata = "method:SendACKeys,agt:"+agt+",ai:"+ai+",brand:"+brand+",category:"+category+",keys:"+keys+",me:"+me+",mode:"+str(mode)+",power:"+str(power)+",swing:"+str(swing)+",temp:"+str(temp)+",wind:"+str(wind)+",time:"+str(tick)+",userid:"+userid+",usertoken:"+usertoken+",appkey:"+appkey+",apptoken:"+apptoken
-    sign = hashlib.md5(sdata.encode(encoding='UTF-8')).hexdigest()     
-    _LOGGER.debug("sendackey: %s",str(sdata))
-    send_values ={                                                                                                                                                                                                 
-      "id": 1,                                                                                                                                                                                                     
-      "method": "SendACKeys",                                                                                                                                                                                        
-      "params": {                                                                                                                                                                                                  
-          "agt": agt,                                                                                                                                                                                              
-          "me": me,                                                                                                                                                                                                
-          "category": category,                                                                                                                                                                                    
-          "brand": brand,                                                                                                                                                                                          
-          "ai": ai,                                                                                                                                                                                                
-          "keys": keys,
-          "power": power,
-          "mode": mode,
-          "temp": temp,
-          "wind": wind,
-          "swing": swing                                                                                                                                                                                            
-      },                                                                                                                                                                                                           
-      "system": {                                                                                                                                                                                                  
-      "ver": "1.0",                                                                                                                                                                                                
-      "lang": "en",                                                                                                                                                                                                
-      "userid": userid,                                                                                                                                                                                            
-      "appkey": appkey,                                                                                                                                                                                            
-      "time": tick,                                                                                                                                                                                                
-      "sign": sign                                                                                                                                                                                                 
-      }                                                                                                                                                                                                            
+    sdata = "method:SendACKeys,agt:"+agt+",ai:"+ai+",brand:"+brand+",category:"+category+",keys:"+keys+",me:"+me+",mode:"+str(mode)+",power:"+str(power)+",swing:"+str(
+        swing)+",temp:"+str(temp)+",wind:"+str(wind)+",time:"+str(tick)+",userid:"+userid+",usertoken:"+usertoken+",appkey:"+appkey+",apptoken:"+apptoken
+    sign = hashlib.md5(sdata.encode(encoding='UTF-8')).hexdigest()
+    _LOGGER.debug("sendackey: %s", str(sdata))
+    send_values = {
+        "id": 1,
+        "method": "SendACKeys",
+        "params": {
+            "agt": agt,
+            "me": me,
+            "category": category,
+            "brand": brand,
+            "ai": ai,
+            "keys": keys,
+            "power": power,
+            "mode": mode,
+            "temp": temp,
+            "wind": wind,
+            "swing": swing
+        },
+        "system": {
+            "ver": "1.0",
+            "lang": "en",
+            "userid": userid,
+            "appkey": appkey,
+            "time": tick,
+            "sign": sign
+        }
     }
-    header = {'Content-Type': 'application/json'}                                                                                                                                                                  
-    send_data = json.dumps(send_values)                                                                                                                                                                            
-    req = urllib.request.Request(url=url, data=send_data.encode('utf-8'), headers=header, method='POST')                                                                                                           
-    response = json.loads(urllib.request.urlopen(req).read().decode('utf-8'))     
-    _LOGGER.debug("sendackey_res: %s",str(response))
-    return response 
+    header = {'Content-Type': 'application/json'}
+    send_data = json.dumps(send_values)
+    req = urllib.request.Request(url=url, data=send_data.encode(
+        'utf-8'), headers=header, method='POST')
+    response = json.loads(urllib.request.urlopen(req).read().decode('utf-8'))
+    _LOGGER.debug("sendackey_res: %s", str(response))
+    return response
+
 
 def setup(hass, config):
     """Set up the lifesmart component."""
     param = {}
     param['appkey'] = config[DOMAIN][CONF_LIFESMART_APPKEY]
     param['apptoken'] = config[DOMAIN][CONF_LIFESMART_APPTOKEN]
-    # param['usertoken'] = config[DOMAIN][CONF_LIFESMART_USERTOKEN]
-    # param['userid'] = config[DOMAIN][CONF_LIFESMART_USERID]
-
-    """This part of code is created by muchamucha"""
-    """Login and authenticate the user"""
-    param['username'] = config[DOMAIN][CONF_LIFESMART_USERNAME]
-    param['pwd'] = config[DOMAIN][CONF_LIFESMART_PASSWORD]
-    res_login = lifesmart_Login(param['username'],param['pwd'],param['appkey'])
-    param['token'] = res_login['token']
-    param['userid'] = res_login['userid']
-    res_doauth = lifesmart_doAuth(param['userid'],param['token'],param['appkey'])
-    param['usertoken'] = res_doauth['usertoken']
-
-    """origin"""
+    param['usertoken'] = config[DOMAIN][CONF_LIFESMART_USERTOKEN]
+    param['userid'] = config[DOMAIN][CONF_LIFESMART_USERID]
     exclude_items = config[DOMAIN][CONF_EXCLUDE_ITEMS]
-    devices = lifesmart_EpGetAll(param['appkey'],param['apptoken'],param['usertoken'],param['userid'])
+    devices = lifesmart_EpGetAll(
+        param['appkey'], param['apptoken'], param['usertoken'], param['userid'])
     for dev in devices:
         if dev['me'] in exclude_items:
             continue
         devtype = dev['devtype']
-        dev['agt'] = dev['agt'].replace("_","")
+        dev['agt'] = dev['agt'].replace("_", "")
         if devtype in SWTICH_TYPES:
-            discovery.load_platform(hass,"switch", DOMAIN, {"dev": dev,"param": param}, config)
+            discovery.load_platform(hass, "switch", DOMAIN, {
+                                    "dev": dev, "param": param}, config)
         elif devtype in BINARY_SENSOR_TYPES:
-            discovery.load_platform(hass,"binary_sensor", DOMAIN, {"dev": dev,"param": param}, config)
+            discovery.load_platform(hass, "binary_sensor", DOMAIN, {
+                                    "dev": dev, "param": param}, config)
         elif devtype in COVER_TYPES:
-            discovery.load_platform(hass,"cover", DOMAIN, {"dev": dev,"param": param}, config)
+            discovery.load_platform(hass, "cover", DOMAIN, {
+                                    "dev": dev, "param": param}, config)
         elif devtype in SPOT_TYPES:
-            discovery.load_platform(hass,"light", DOMAIN, {"dev": dev,"param": param}, config)
+            discovery.load_platform(hass, "light", DOMAIN, {
+                                    "dev": dev, "param": param}, config)
         elif devtype in CLIMATE_TYPES:
-            discovery.load_platform(hass,"climate", DOMAIN, {"dev": dev,"param": param}, config)
+            discovery.load_platform(hass, "climate", DOMAIN, {
+                                    "dev": dev, "param": param}, config)
         elif devtype in GAS_SENSOR_TYPES or devtype in EV_SENSOR_TYPES:
-            discovery.load_platform(hass,"sensor", DOMAIN, {"dev": dev,"param": param}, config)
+            discovery.load_platform(hass, "sensor", DOMAIN, {
+                                    "dev": dev, "param": param}, config)
         if devtype in OT_SENSOR_TYPES:
-            discovery.load_platform(hass,"sensor", DOMAIN, {"dev": dev,"param": param}, config)
+            discovery.load_platform(hass, "sensor", DOMAIN, {
+                                    "dev": dev, "param": param}, config)
         if devtype in LIGHT_SWITCH_TYPES:
-            discovery.load_platform(hass,"light", DOMAIN, {"dev": dev,"param": param}, config)
+            discovery.load_platform(hass, "light", DOMAIN, {
+                                    "dev": dev, "param": param}, config)
 
     def send_keys(call):
         """Handle the service call."""
@@ -335,8 +351,10 @@ def setup(hass, config):
         category = call.data['category']
         brand = call.data['brand']
         keys = call.data['keys']
-        restkey = lifesmart_Sendkeys(param['appkey'],param['apptoken'],param['usertoken'],param['userid'],agt,ai,me,category,brand,keys)
-        _LOGGER.debug("sendkey: %s",str(restkey))
+        restkey = lifesmart_Sendkeys(
+            param['appkey'], param['apptoken'], param['usertoken'], param['userid'], agt, ai, me, category, brand, keys)
+        _LOGGER.debug("sendkey: %s", str(restkey))
+
     def send_ackeys(call):
         """Handle the service call."""
         agt = call.data['agt']
@@ -350,44 +368,49 @@ def setup(hass, config):
         temp = call.data['temp']
         wind = call.data['wind']
         swing = call.data['swing']
-        restackey = lifesmart_Sendackeys(param['appkey'],param['apptoken'],param['usertoken'],param['userid'],agt,ai,me,category,brand,keys,power,mode,temp,wind,swing)
-        _LOGGER.debug("sendkey: %s",str(restackey))
-    
+        restackey = lifesmart_Sendackeys(param['appkey'], param['apptoken'], param['usertoken'],
+                                         param['userid'], agt, ai, me, category, brand, keys, power, mode, temp, wind, swing)
+        _LOGGER.debug("sendkey: %s", str(restackey))
+
     def get_fan_mode(_fanspeed):
         fanmode = None
         if _fanspeed < 30:
             fanmode = SPEED_LOW
         elif _fanspeed < 65 and _fanspeed >= 30:
             fanmode = SPEED_MEDIUM
-        elif _fanspeed >=65:
+        elif _fanspeed >= 65:
             fanmode = SPEED_HIGH
         return fanmode
-    
+
     async def set_Event(msg):
         if msg['msg']['idx'] != "s" and msg['msg']['me'] not in exclude_items:
             devtype = msg['msg']['devtype']
-            agt = msg['msg']['agt'].replace("_","")
-            if devtype in SWTICH_TYPES and msg['msg']['idx'] in ["L1","L2","L3","P1","P2","P3"]:
-                enid = "switch."+(devtype + "_" + agt + "_" + msg['msg']['me'] + "_" + msg['msg']['idx']).lower()
+            agt = msg['msg']['agt'].replace("_", "")
+            if devtype in SWTICH_TYPES and msg['msg']['idx'] in ["L1", "L2", "L3", "P1", "P2", "P3"]:
+                enid = "switch."+(devtype + "_" + agt + "_" +
+                                  msg['msg']['me'] + "_" + msg['msg']['idx']).lower()
                 attrs = hass.states.get(enid).attributes
                 if msg['msg']['type'] % 2 == 1:
-                    hass.states.set(enid, 'on',attrs)
+                    hass.states.set(enid, 'on', attrs)
                 else:
-                    hass.states.set(enid, 'off',attrs)
-            elif devtype in BINARY_SENSOR_TYPES and msg['msg']['idx'] in ["M","G","B","AXS","P1"]:
-                enid = "binary_sensor."+(devtype + "_" + agt + "_" + msg['msg']['me'] + "_" + msg['msg']['idx']).lower()
+                    hass.states.set(enid, 'off', attrs)
+            elif devtype in BINARY_SENSOR_TYPES and msg['msg']['idx'] in ["M", "G", "B", "AXS", "P1"]:
+                enid = "binary_sensor." + \
+                    (devtype + "_" + agt + "_" +
+                     msg['msg']['me'] + "_" + msg['msg']['idx']).lower()
                 attrs = hass.states.get(enid).attributes
                 if msg['msg']['val'] == 1:
-                    hass.states.set(enid, 'on',attrs)
+                    hass.states.set(enid, 'on', attrs)
                 else:
-                    hass.states.set(enid, 'off',attrs)
+                    hass.states.set(enid, 'off', attrs)
             elif devtype in COVER_TYPES and msg['msg']['idx'] == "P1":
-                enid = "cover."+(devtype + "_" + agt + "_" + msg['msg']['me']).lower()
+                enid = "cover."+(devtype + "_" + agt + "_" +
+                                 msg['msg']['me']).lower()
                 attrs = dict(hass.states.get(enid).attributes)
                 nval = msg['msg']['val']
                 ntype = msg['msg']['type']
                 attrs['current_position'] = nval & 0x7F
-                _LOGGER.debug("websocket_cover_attrs: %s",str(attrs))
+                _LOGGER.debug("websocket_cover_attrs: %s", str(attrs))
                 nstat = None
                 if ntype % 2 == 0:
                     if nval > 0:
@@ -401,92 +424,104 @@ def setup(hass, config):
                         nstat = "closing"
                 hass.states.set(enid, nstat, attrs)
             elif devtype in EV_SENSOR_TYPES:
-                enid = "sensor."+(devtype + "_" + agt + "_" + msg['msg']['me'] + "_" + msg['msg']['idx']).lower()
+                enid = "sensor."+(devtype + "_" + agt + "_" +
+                                  msg['msg']['me'] + "_" + msg['msg']['idx']).lower()
                 attrs = hass.states.get(enid).attributes
                 hass.states.set(enid, msg['msg']['v'], attrs)
             elif devtype in GAS_SENSOR_TYPES and msg['msg']['val'] > 0:
-                enid = "sensor."+(devtype + "_" + agt + "_" + msg['msg']['me'] + "_" + msg['msg']['idx']).lower()
+                enid = "sensor."+(devtype + "_" + agt + "_" +
+                                  msg['msg']['me'] + "_" + msg['msg']['idx']).lower()
                 attrs = hass.states.get(enid).attributes
                 hass.states.set(enid, msg['msg']['val'], attrs)
             elif devtype in SPOT_TYPES or devtype in LIGHT_SWITCH_TYPES:
-                enid = "light."+(devtype + "_" + agt + "_" + msg['msg']['me'] + "_" + msg['msg']['idx']).lower()
+                enid = "light."+(devtype + "_" + agt + "_" +
+                                 msg['msg']['me'] + "_" + msg['msg']['idx']).lower()
                 attrs = hass.states.get(enid).attributes
                 if msg['msg']['type'] % 2 == 1:
-                    hass.states.set(enid, 'on',attrs)
+                    hass.states.set(enid, 'on', attrs)
                 else:
-                    hass.states.set(enid, 'off',attrs)
-            #elif devtype in QUANTUM_TYPES and msg['msg']['idx'] == "P1":
+                    hass.states.set(enid, 'off', attrs)
+            # elif devtype in QUANTUM_TYPES and msg['msg']['idx'] == "P1":
             #    enid = "light."+(devtype + "_" + agt + "_" + msg['msg']['me'] + "_P1").lower()
             #    attrs = hass.states.get(enid).attributes
             #    hass.states.set(enid, msg['msg']['val'], attrs)
             elif devtype in CLIMATE_TYPES:
-                enid = "climate."+(devtype + "_" + agt + "_" + msg['msg']['me']).lower().replace(":","_").replace("@","_")
+                enid = "climate." + \
+                    (devtype + "_" + agt + "_" +
+                     msg['msg']['me']).lower().replace(":", "_").replace("@", "_")
                 _idx = msg['msg']['idx']
                 attrs = dict(hass.states.get(enid).attributes)
                 nstat = hass.states.get(enid).state
                 if _idx == "O":
-                  if msg['msg']['type'] % 2 == 1:
-                    nstat = attrs['last_mode']
-                    hass.states.set(enid, nstat, attrs)
-                  else:
-                    nstat = HVAC_MODE_OFF
-                    hass.states.set(enid, nstat, attrs)
+                    if msg['msg']['type'] % 2 == 1:
+                        nstat = attrs['last_mode']
+                        hass.states.set(enid, nstat, attrs)
+                    else:
+                        nstat = HVAC_MODE_OFF
+                        hass.states.set(enid, nstat, attrs)
                 if _idx == "P1":
-                  if msg['msg']['type'] % 2 == 1:
-                    nstat = HVAC_MODE_HEAT
-                    hass.states.set(enid, nstat, attrs)
-                  else:
-                    nstat = HVAC_MODE_OFF
-                    hass.states.set(enid, nstat, attrs)
+                    if msg['msg']['type'] % 2 == 1:
+                        nstat = HVAC_MODE_HEAT
+                        hass.states.set(enid, nstat, attrs)
+                    else:
+                        nstat = HVAC_MODE_OFF
+                        hass.states.set(enid, nstat, attrs)
                 if _idx == "P2":
-                  if msg['msg']['type'] % 2 == 1:
-                    attrs['Heating'] = "true"
-                    hass.states.set(enid, nstat, attrs)
-                  else:
-                    attrs['Heating'] = "false"
-                    hass.states.set(enid, nstat, attrs)
+                    if msg['msg']['type'] % 2 == 1:
+                        attrs['Heating'] = "true"
+                        hass.states.set(enid, nstat, attrs)
+                    else:
+                        attrs['Heating'] = "false"
+                        hass.states.set(enid, nstat, attrs)
                 elif _idx == "MODE":
-                  if msg['msg']['type'] == 206:
-                    if nstat != HVAC_MODE_OFF:
-                      nstat = LIFESMART_STATE_LIST[msg['msg']['val']]
-                    attrs['last_mode'] = nstat
-                    hass.states.set(enid, nstat, attrs)
+                    if msg['msg']['type'] == 206:
+                        if nstat != HVAC_MODE_OFF:
+                            nstat = LIFESMART_STATE_LIST[msg['msg']['val']]
+                        attrs['last_mode'] = nstat
+                        hass.states.set(enid, nstat, attrs)
                 elif _idx == "F":
-                  if msg['msg']['type'] == 206:
-                    attrs['fan_mode'] = get_fan_mode(msg['msg']['val'])
-                    hass.states.set(enid, nstat, attrs)
+                    if msg['msg']['type'] == 206:
+                        attrs['fan_mode'] = get_fan_mode(msg['msg']['val'])
+                        hass.states.set(enid, nstat, attrs)
                 elif _idx == "tT" or _idx == "P3":
-                  if msg['msg']['type'] == 136:
-                    attrs['temperature'] = msg['msg']['v']
-                    hass.states.set(enid, nstat, attrs)
+                    if msg['msg']['type'] == 136:
+                        attrs['temperature'] = msg['msg']['v']
+                        hass.states.set(enid, nstat, attrs)
                 elif _idx == "T" or _idx == "P4":
-                  if msg['msg']['type'] == 8 or msg['msg']['type'] == 9:
-                    attrs['current_temperature'] = msg['msg']['v']
-                    hass.states.set(enid, nstat, attrs)
+                    if msg['msg']['type'] == 8 or msg['msg']['type'] == 9:
+                        attrs['current_temperature'] = msg['msg']['v']
+                        hass.states.set(enid, nstat, attrs)
             elif devtype in LOCK_TYPES:
                 if msg['msg']['idx'] == "BAT":
-                    enid = "sensor."+(devtype + "_" + agt + "_" + msg['msg']['me'] + "_" + msg['msg']['idx']).lower()
+                    enid = "sensor." + \
+                        (devtype + "_" + agt + "_" +
+                         msg['msg']['me'] + "_" + msg['msg']['idx']).lower()
                     attrs = hass.states.get(enid).attributes
                     hass.states.set(enid, msg['msg']['val'], attrs)
                 elif msg['msg']['idx'] == "EVTLO":
-                    enid = "binary_sensor."+(devtype + "_" + agt + "_" + msg['msg']['me'] + "_" + msg['msg']['idx']).lower()
+                    enid = "binary_sensor." + \
+                        (devtype + "_" + agt + "_" +
+                         msg['msg']['me'] + "_" + msg['msg']['idx']).lower()
                     val = msg['msg']['val']
                     ulk_way = val >> 12
                     ulk_user = val & 0xfff
                     ulk_success = True
                     if ulk_user == 0:
                         ulk_success = False
-                    attrs = {"unlocking_way": ulk_way,"unlocking_user": ulk_user,"devtype": devtype,"unlocking_success": ulk_success,"last_time": datetime.datetime.fromtimestamp(msg['msg']['ts']/1000).strftime("%Y-%m-%d %H:%M:%S") }
+                    attrs = {"unlocking_way": ulk_way, "unlocking_user": ulk_user, "devtype": devtype, "unlocking_success": ulk_success,
+                             "last_time": datetime.datetime.fromtimestamp(msg['msg']['ts']/1000).strftime("%Y-%m-%d %H:%M:%S")}
                     if msg['msg']['type'] % 2 == 1:
-                        hass.states.set(enid, 'on',attrs)
+                        hass.states.set(enid, 'on', attrs)
                     else:
-                        hass.states.set(enid, 'off',attrs)
-            if devtype in OT_SENSOR_TYPES and msg['msg']['idx'] in ["Z","V","P3","P4"]:
-                enid = "sensor."+(devtype + "_" + agt + "_" + msg['msg']['me'] + "_" + msg['msg']['idx']).lower()
+                        hass.states.set(enid, 'off', attrs)
+            if devtype in OT_SENSOR_TYPES and msg['msg']['idx'] in ["Z", "V", "P3", "P4"]:
+                enid = "sensor."+(devtype + "_" + agt + "_" +
+                                  msg['msg']['me'] + "_" + msg['msg']['idx']).lower()
                 attrs = hass.states.get(enid).attributes
                 hass.states.set(enid, msg['msg']['v'], attrs)
+
     def on_message(ws, message):
-        _LOGGER.info("websocket_msg: %s",str(message))
+        _LOGGER.info("websocket_msg: %s", str(message))
         msg = json.loads(message)
         if 'type' not in msg:
             return
@@ -495,26 +530,28 @@ def setup(hass, config):
         asyncio.run(set_Event(msg))
 
     def on_error(ws, error):
-        _LOGGER.debug("websocket_error: %s",str(error))
+        _LOGGER.debug("websocket_error: %s", str(error))
 
     def on_close(ws):
         _LOGGER.debug("lifesmart websocket closed...")
-        
+
     def on_open(ws):
         tick = int(time.time())
-        sdata = "method:WbAuth,time:"+str(tick)+",userid:"+param['userid']+",usertoken:"+param['usertoken']+",appkey:"+param['appkey']+",apptoken:"+param['apptoken']
+        sdata = "method:WbAuth,time:" + \
+            str(tick)+",userid:"+param['userid']+",usertoken:"+param['usertoken'] + \
+            ",appkey:"+param['appkey']+",apptoken:"+param['apptoken']
         sign = hashlib.md5(sdata.encode(encoding='UTF-8')).hexdigest()
-        send_values ={
-        "id": 1,
-        "method": "WbAuth",
-        "system": {
-        "ver": "1.0",
-        "lang": "en",
-        "userid": param['userid'],
-        "appkey": param['appkey'],
-        "time": tick,
-        "sign": sign
-        }
+        send_values = {
+            "id": 1,
+            "method": "WbAuth",
+            "system": {
+                "ver": "1.0",
+                "lang": "en",
+                "userid": param['userid'],
+                "appkey": param['appkey'],
+                "time": tick,
+                "sign": sign
+            }
         }
         header = {'Content-Type': 'application/json'}
         send_data = json.dumps(send_values)
@@ -523,14 +560,15 @@ def setup(hass, config):
 
     hass.services.register(DOMAIN, 'send_keys', send_keys)
     hass.services.register(DOMAIN, 'send_ackeys', send_ackeys)
-    ws = websocket.WebSocketApp("wss://api.ilifesmart.com:8443/wsapp/",
-                          on_message = on_message,
-                          on_error = on_error,
-                          on_close = on_close)
+    ws = websocket.WebSocketApp("wss://api.apz.ilifesmart.com:8443/wsapp/",
+                                on_message=on_message,
+                                on_error=on_error,
+                                on_close=on_close)
     ws.on_open = on_open
-    hass.data[LifeSmart_STATE_MANAGER] = LifeSmartStatesManager(ws = ws)
+    hass.data[LifeSmart_STATE_MANAGER] = LifeSmartStatesManager(ws=ws)
     hass.data[LifeSmart_STATE_MANAGER].start_keep_alive()
     return True
+
 
 class LifeSmartDevice(Entity):
     """LifeSmart base device."""
@@ -546,9 +584,11 @@ class LifeSmartDevice(Entity):
         self._me = dev['me']
         self._idx = idx
         self._devtype = dev['devtype']
-        attrs = {"agt": self._agt,"me": self._me,"idx": self._idx,"devtype": self._devtype }
+        if self._agt.startswith('-'):
+            self._agt = "_" + self._agt
+        attrs = {"agt": self._agt, "me": self._me,
+                 "idx": self._idx, "devtype": self._devtype}
         self._attributes = attrs
-        
 
     @property
     def object_id(self):
@@ -575,11 +615,10 @@ class LifeSmartDevice(Entity):
         """check with the entity for an updated state."""
         return False
 
-
     @staticmethod
     def _lifesmart_epset(self, type, val, idx):
         #self._tick = int(time.time())
-        url = "https://api.ilifesmart.com/app/api.EpSet"
+        url = "https://api.apz.ilifesmart.com/app/api.EpSet"
         tick = int(time.time())
         appkey = self._appkey
         apptoken = self._apptoken
@@ -587,38 +626,42 @@ class LifeSmartDevice(Entity):
         usertoken = self._usertoken
         agt = self._agt
         me = self._me
-        sdata = "method:EpSet,agt:"+ agt +",idx:"+idx+",me:"+me+",type:"+type+",val:"+str(val)+",time:"+str(tick)+",userid:"+userid+",usertoken:"+usertoken+",appkey:"+appkey+",apptoken:"+apptoken
+        sdata = "method:EpSet,agt:" + agt + ",idx:"+idx+",me:"+me+",type:"+type+",val:" + \
+            str(val)+",time:"+str(tick)+",userid:"+userid+",usertoken:" + \
+            usertoken+",appkey:"+appkey+",apptoken:"+apptoken
         sign = hashlib.md5(sdata.encode(encoding='UTF-8')).hexdigest()
         send_values = {
-          "id": 1,
-          "method": "EpSet",
-          "system": {
-          "ver": "1.0",
-          "lang": "en",
-          "userid": userid,
-          "appkey": appkey,
-          "time": tick,
-          "sign": sign
-          },
-          "params": {
-          "agt": agt,
-          "me": me,
-          "idx": idx,
-          "type": type,
-          "val": val
-          }
+            "id": 1,
+            "method": "EpSet",
+            "system": {
+                "ver": "1.0",
+                "lang": "en",
+                "userid": userid,
+                "appkey": appkey,
+                "time": tick,
+                "sign": sign
+            },
+            "params": {
+                "agt": agt,
+                "me": me,
+                "idx": idx,
+                "type": type,
+                "val": val
+            }
         }
         header = {'Content-Type': 'application/json'}
         send_data = json.dumps(send_values)
-        req = urllib.request.Request(url=url, data=send_data.encode('utf-8'), headers=header, method='POST')
-        response = json.loads(urllib.request.urlopen(req).read().decode('utf-8'))
-        _LOGGER.info("epset_send: %s",str(send_data))
-        _LOGGER.info("epset_res: %s",str(response))
+        req = urllib.request.Request(url=url, data=send_data.encode(
+            'utf-8'), headers=header, method='POST')
+        response = json.loads(
+            urllib.request.urlopen(req).read().decode('utf-8'))
+        _LOGGER.info("epset_send: %s", str(send_data))
+        _LOGGER.info("epset_res: %s", str(response))
         return response['code']
 
     @staticmethod
     def _lifesmart_epget(self):
-        url = "https://api.ilifesmart.com/app/api.EpGet"
+        url = "https://api.apz.ilifesmart.com/app/api.EpGet"
         tick = int(time.time())
         appkey = self._appkey
         apptoken = self._apptoken
@@ -626,32 +669,36 @@ class LifeSmartDevice(Entity):
         usertoken = self._usertoken
         agt = self._agt
         me = self._me
-        sdata = "method:EpGet,agt:"+ agt +",me:"+ me +",time:"+str(tick)+",userid:"+userid+",usertoken:"+usertoken+",appkey:"+appkey+",apptoken:"+apptoken
+        sdata = "method:EpGet,agt:" + agt + ",me:" + me + ",time:" + \
+            str(tick)+",userid:"+userid+",usertoken:" + \
+            usertoken+",appkey:"+appkey+",apptoken:"+apptoken
         sign = hashlib.md5(sdata.encode(encoding='UTF-8')).hexdigest()
         send_values = {
-          "id": 1,
-          "method": "EpGet",
-          "system": {
-          "ver": "1.0",
-          "lang": "en",
-          "userid": userid,
-          "appkey": appkey,
-          "time": tick,
-          "sign": sign
-          },
-          "params": {
-          "agt": agt,
-          "me": me
-          }
+            "id": 1,
+            "method": "EpGet",
+            "system": {
+                "ver": "1.0",
+                "lang": "en",
+                "userid": userid,
+                "appkey": appkey,
+                "time": tick,
+                "sign": sign
+            },
+            "params": {
+                "agt": agt,
+                "me": me
+            }
         }
         header = {'Content-Type': 'application/json'}
         send_data = json.dumps(send_values)
-        req = urllib.request.Request(url=url, data=send_data.encode('utf-8'), headers=header, method='POST')
-        response = json.loads(urllib.request.urlopen(req).read().decode('utf-8'))
+        req = urllib.request.Request(url=url, data=send_data.encode(
+            'utf-8'), headers=header, method='POST')
+        response = json.loads(
+            urllib.request.urlopen(req).read().decode('utf-8'))
         return response['message']['data']
 
-class LifeSmartStatesManager(threading.Thread):
 
+class LifeSmartStatesManager(threading.Thread):
 
     def __init__(self, ws):
         """Init LifeSmart Update Manager."""

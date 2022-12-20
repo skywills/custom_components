@@ -2,6 +2,7 @@
 import binascii
 import logging
 import struct
+from typing import Any
 import urllib.request
 import json
 import time
@@ -12,20 +13,20 @@ from homeassistant.components.light import (
     SUPPORT_BRIGHTNESS,
     SUPPORT_COLOR,
     LightEntity,
-	ENTITY_ID_FORMAT,
+    ENTITY_ID_FORMAT,
 )
 import homeassistant.util.color as color_util
 
-from . import  LifeSmartDevice
+from . import LifeSmartDevice
 
 _LOGGER = logging.getLogger(__name__)
 
-QUANTUM_TYPES=["OD_WE_QUAN",
-]
+QUANTUM_TYPES = ["OD_WE_QUAN",
+                 ]
 
 SPOT_TYPES = ["MSL_IRCTL",
-"OD_WE_IRCTL",
-"SL_SPOT"]
+              "OD_WE_IRCTL",
+              "SL_SPOT"]
 
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
@@ -36,9 +37,10 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     param = discovery_info.get("param")
     devices = []
     for idx in dev['data']:
-        if idx in ["RGB","RGBW","dark","dark1","dark2","dark3","bright","bright1","bright2","bright"]:
-            devices.append(LifeSmartLight(dev,idx,dev['data'][idx],param))
+        if idx in ["RGB", "RGBW", "dark", "dark1", "dark2", "dark3", "bright", "bright1", "bright2", "bright"]:
+            devices.append(LifeSmartLight(dev, idx, dev['data'][idx], param))
     add_entities(devices)
+
 
 class LifeSmartLight(LifeSmartDevice, LightEntity):
     """Representation of a LifeSmartLight."""
@@ -46,8 +48,9 @@ class LifeSmartLight(LifeSmartDevice, LightEntity):
     def __init__(self, dev, idx, val, param):
         """Initialize the LifeSmartLight."""
         super().__init__(dev, idx, val, param)
-        self.entity_id = ENTITY_ID_FORMAT.format(( dev['devtype'] + "_" + dev['agt'] + "_" + dev['me'] + "_" + idx).lower())
-        #_LOGGER.info("light: %s added..",str(self.entity_id))
+        self.entity_id = ENTITY_ID_FORMAT.format(
+            (dev['devtype'] + "_" + dev['agt'] + "_" + dev['me'] + "_" + idx).lower().replace("-", ""))
+        # _LOGGER.info("light: %s added..",str(self.entity_id))
         if val['type'] % 2 == 1:
             self._state = True
         else:
@@ -62,20 +65,20 @@ class LifeSmartLight(LifeSmartDevice, LightEntity):
             rgba = struct.unpack("BBBB", rgbhex)
             rgb = rgba[1:]
             self._hs = color_util.color_RGB_to_hs(*rgb)
-            _LOGGER.info("hs_rgb: %s",str(self._hs))
-
+            _LOGGER.info("hs_rgb: %s", str(self._hs))
 
     async def async_added_to_hass(self):
         if self._devtype not in SPOT_TYPES:
             return
         rmdata = {}
-        rmlist = LifeSmartLight._lifesmart_GetRemoteList(self)
+        rmlist = await self.hass.async_add_executor_job(LifeSmartLight._lifesmart_GetRemoteList, self)
         for ai in rmlist:
-            rms = LifeSmartLight._lifesmart_GetRemotes(self,ai)
+            rms = await self.hass.async_add_executor_job(LifeSmartLight._lifesmart_GetRemotes, self, ai)
             rms['category'] = rmlist[ai]['category']
             rms['brand'] = rmlist[ai]['brand']
             rmdata[ai] = rms
-        self._attributes.setdefault('remotelist',rmdata)
+        self._attributes.setdefault('remotelist', rmdata)
+
     @property
     def is_on(self):
         """Return true if it is on."""
@@ -110,6 +113,7 @@ class LifeSmartLight(LifeSmartDevice, LightEntity):
         if super()._lifesmart_epset(self, "0x80", 0, self._idx) == 0:
             self._state = False
             self.schedule_update_ha_state()
+
     @staticmethod
     def _lifesmart_GetRemoteList(self):
         appkey = self._appkey
@@ -117,61 +121,70 @@ class LifeSmartLight(LifeSmartDevice, LightEntity):
         usertoken = self._usertoken
         userid = self._userid
         agt = self._agt
-        url = "https://api.ilifesmart.com/app/irapi.GetRemoteList"
+        url = "https://api.apz.ilifesmart.com/app/irapi.GetRemoteList"
         tick = int(time.time())
-        sdata = "method:GetRemoteList,agt:"+agt+",time:"+str(tick)+",userid:"+userid+",usertoken:"+usertoken+",appkey:"+appkey+",apptoken:"+apptoken
+        sdata = "method:GetRemoteList,agt:"+agt+",time:" + \
+            str(tick)+",userid:"+userid+",usertoken:" + \
+            usertoken+",appkey:"+appkey+",apptoken:"+apptoken
         sign = hashlib.md5(sdata.encode(encoding='UTF-8')).hexdigest()
-        send_values ={
-          "id": 1,
-          "method": "GetRemoteList",
-          "params": {
-              "agt": agt
-          }, 
-          "system": {
-          "ver": "1.0",
-          "lang": "en",
-          "userid": userid,
-          "appkey": appkey,
-          "time": tick,
-          "sign": sign
-          }
+        send_values = {
+            "id": 1,
+            "method": "GetRemoteList",
+            "params": {
+                "agt": agt
+            },
+            "system": {
+                "ver": "1.0",
+                "lang": "en",
+                "userid": userid,
+                "appkey": appkey,
+                "time": tick,
+                "sign": sign
+            }
         }
+
         header = {'Content-Type': 'application/json'}
         send_data = json.dumps(send_values)
-        req = urllib.request.Request(url=url, data=send_data.encode('utf-8'), headers=header, method='POST')
-        response = json.loads(urllib.request.urlopen(req).read().decode('utf-8'))
+        req = urllib.request.Request(url=url, data=send_data.encode(
+            'utf-8'), headers=header, method='POST')
+        response: dict[str, Any] = json.loads(
+            urllib.request.urlopen(req).read().decode('utf-8'))
         return response['message']
 
-    @staticmethod
-    def _lifesmart_GetRemotes(self,ai):
+    @ staticmethod
+    def _lifesmart_GetRemotes(self, ai):
         appkey = self._appkey
         apptoken = self._apptoken
         usertoken = self._usertoken
         userid = self._userid
         agt = self._agt
-        url = "https://api.ilifesmart.com/app/irapi.GetRemote"
+        url = "https://api.apz.ilifesmart.com/app/irapi.GetRemote"
         tick = int(time.time())
-        sdata = "method:GetRemote,agt:"+agt+",ai:"+ai+",needKeys:2,time:"+str(tick)+",userid:"+userid+",usertoken:"+usertoken+",appkey:"+appkey+",apptoken:"+apptoken
+        sdata = "method:GetRemote,agt:"+agt+",ai:"+ai+",needKeys:2,time:" + \
+            str(tick)+",userid:"+userid+",usertoken:" + \
+            usertoken+",appkey:"+appkey+",apptoken:"+apptoken
         sign = hashlib.md5(sdata.encode(encoding='UTF-8')).hexdigest()
-        send_values ={
-          "id": 1,
-          "method": "GetRemote",
-          "params": {
-              "agt": agt,
-              "ai": ai,
-              "needKeys": 2
-          },
-          "system": {
-          "ver": "1.0",
-          "lang": "en",
-          "userid": userid,
-          "appkey": appkey,
-          "time": tick,
-          "sign": sign
-          }
+        send_values = {
+            "id": 1,
+            "method": "GetRemote",
+            "params": {
+                "agt": agt,
+                "ai": ai,
+                "needKeys": 2
+            },
+            "system": {
+                "ver": "1.0",
+                "lang": "en",
+                "userid": userid,
+                "appkey": appkey,
+                "time": tick,
+                "sign": sign
+            }
         }
         header = {'Content-Type': 'application/json'}
         send_data = json.dumps(send_values)
-        req = urllib.request.Request(url=url, data=send_data.encode('utf-8'), headers=header, method='POST')
-        response = json.loads(urllib.request.urlopen(req).read().decode('utf-8'))
+        req = urllib.request.Request(url=url, data=send_data.encode(
+            'utf-8'), headers=header, method='POST')
+        response: dict[str, Any] = json.loads(
+            urllib.request.urlopen(req).read().decode('utf-8'))
         return response['message']['codes']
