@@ -1,12 +1,11 @@
 {
   "domain": "lifesmart",
-  "name": "lifesmart",
+  "name": "skyzhishui",
   "documentation": "https://github.com/skyzhishui/custom_components",
   "requirements": [],
   "dependencies": [],
-  "iot_class": "cloud_polling",
   "codeowners": [
     "@skyzhishui"
   ],
-  "version": "20.12.17.rc-0"
+  "version": "20.12.16"
 }

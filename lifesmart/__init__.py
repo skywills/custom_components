@@ -435,7 +435,7 @@ def setup(hass, config):
                 hass.states.set(enid, msg['msg']['val'], attrs)
             elif devtype in SPOT_TYPES or devtype in LIGHT_SWITCH_TYPES:
                 enid = "light."+(devtype + "_" + agt + "_" +
-                                 msg['msg']['me'] + "_" + msg['msg']['idx']).lower()
+                                 msg['msg']['me'] + "_" + msg['msg']['idx']).lower().replace("-", "")
                 attrs = hass.states.get(enid).attributes
                 if msg['msg']['type'] % 2 == 1:
                     hass.states.set(enid, 'on', attrs)
