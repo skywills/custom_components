@@ -50,6 +50,8 @@ class LifeSmartLight(LifeSmartDevice, LightEntity):
         super().__init__(dev, idx, val, param)
         self.entity_id = ENTITY_ID_FORMAT.format(
             (dev['devtype'] + "_" + dev['agt'] + "_" + dev['me'] + "_" + idx).lower().replace("-", ""))
+        self._unique_id = self.entity_id
+
         # _LOGGER.info("light: %s added..",str(self.entity_id))
         if val['type'] % 2 == 1:
             self._state = True

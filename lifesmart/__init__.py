@@ -584,11 +584,17 @@ class LifeSmartDevice(Entity):
         self._me = dev['me']
         self._idx = idx
         self._devtype = dev['devtype']
+
         if self._agt.startswith('-'):
             self._agt = "_" + self._agt
         attrs = {"agt": self._agt, "me": self._me,
                  "idx": self._idx, "devtype": self._devtype}
         self._attributes = attrs
+
+    @property
+    def unique_id(self):
+        """Return the unique_id of the LifeSmart device."""
+        return self._unique_id
 
     @property
     def object_id(self):
