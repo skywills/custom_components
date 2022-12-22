@@ -48,7 +48,7 @@ CONF_LIFESMART_APPKEY = "appkey"
 CONF_LIFESMART_APPTOKEN = "apptoken"
 CONF_LIFESMART_USERTOKEN = "usertoken"  # should be deleted
 CONF_LIFESMART_USERID = "userid"  # should be deleted
-CONF_LIFESMART_API_DOMAIN = "api.ilifesmart.com"  # 支持配置不同区域
+CONF_LIFESMART_API_DOMAIN = "apidomain"  # 支持配置不同区域
 CONF_EXCLUDE_ITEMS = "exclude"
 
 SWTICH_TYPES = ["SL_SF_RC",
