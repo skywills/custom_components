@@ -71,6 +71,8 @@ lifesmart:
   apptoken: "your_apptoken"
   usertoken: "your_usertoken" 
   userid: "your_userid"
+  # 支持区域api, 如：亚太地区 api.apz.ilifesmart.com
+  apidomain: "api.ilifesmart.com"  
   exclude:
     - "0011" #需屏蔽设备的me值,这个暂时为必填项，可以填任意内容
 ```

@@ -1,11 +1,12 @@
 {
   "domain": "lifesmart",
-  "name": "skyzhishui",
+  "name": "Lifesmart Home Automation",
   "documentation": "https://github.com/skyzhishui/custom_components",
   "requirements": [],
   "dependencies": [],
+  "config_flow": false,  
   "codeowners": [
     "@skyzhishui"
   ],
-  "version": "20.12.16"
+  "version": "20.12.17-rc.0"
 }

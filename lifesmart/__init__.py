@@ -48,10 +48,9 @@ CONF_LIFESMART_APPKEY = "appkey"
 CONF_LIFESMART_APPTOKEN = "apptoken"
 CONF_LIFESMART_USERTOKEN = "usertoken"  # should be deleted
 CONF_LIFESMART_USERID = "userid"  # should be deleted
+CONF_LIFESMART_API_DOMAIN = "api.ilifesmart.com"  # 支持配置不同区域
 CONF_EXCLUDE_ITEMS = "exclude"
-# added by muchamucha
-CONF_LIFESMART_USERNAME = "username"
-CONF_LIFESMART_PASSWORD = "password"
+
 SWTICH_TYPES = ["SL_SF_RC",
                 "SL_SW_RC",
                 "SL_SW_IF3",
@@ -146,8 +145,8 @@ LifeSmart_STATE_MANAGER = 'lifesmart_wss'
 # origin
 
 
-def lifesmart_EpGetAll(appkey, apptoken, usertoken, userid):
-    url = "https://api.apz.ilifesmart.com/app/api.EpGetAll"
+def lifesmart_EpGetAll(apidomain, appkey, apptoken, usertoken, userid):
+    url = f"https://{apidomain}/app/api.EpGetAll"
     tick = int(time.time())
     sdata = "method:EpGetAll,time:" + \
         str(tick)+",userid:"+userid+",usertoken:" + \
@@ -175,8 +174,8 @@ def lifesmart_EpGetAll(appkey, apptoken, usertoken, userid):
     return False
 
 
-def lifesmart_Sendkeys(appkey, apptoken, usertoken, userid, agt, ai, me, category, brand, keys):
-    url = "https://api.apz.ilifesmart.com/app/irapi.SendKeys"
+def lifesmart_Sendkeys(apidomain, appkey, apptoken, usertoken, userid, agt, ai, me, category, brand, keys):
+    url = f"https://{apidomain}/app/irapi.SendKeys"
     tick = int(time.time())
     #keys = str(keys)
     sdata = "method:SendKeys,agt:"+agt+",ai:"+ai+",brand:"+brand+",category:"+category+",keys:"+keys+",me:" + \
@@ -213,8 +212,8 @@ def lifesmart_Sendkeys(appkey, apptoken, usertoken, userid, agt, ai, me, categor
     return response
 
 
-def lifesmart_Sendackeys(appkey, apptoken, usertoken, userid, agt, ai, me, category, brand, keys, power, mode, temp, wind, swing):
-    url = "https://api.apz.ilifesmart.com/app/irapi.SendACKeys"
+def lifesmart_Sendackeys(apidomain, appkey, apptoken, usertoken, userid, agt, ai, me, category, brand, keys, power, mode, temp, wind, swing):
+    url = f"https://{apidomain}/app/irapi.SendACKeys"
     tick = int(time.time())
     #keys = str(keys)
     sdata = "method:SendACKeys,agt:"+agt+",ai:"+ai+",brand:"+brand+",category:"+category+",keys:"+keys+",me:"+me+",mode:"+str(mode)+",power:"+str(power)+",swing:"+str(
@@ -262,9 +261,10 @@ def setup(hass, config):
     param['apptoken'] = config[DOMAIN][CONF_LIFESMART_APPTOKEN]
     param['usertoken'] = config[DOMAIN][CONF_LIFESMART_USERTOKEN]
     param['userid'] = config[DOMAIN][CONF_LIFESMART_USERID]
+    param['apidomain'] = config[DOMAIN][CONF_LIFESMART_API_DOMAIN]
     exclude_items = config[DOMAIN][CONF_EXCLUDE_ITEMS]
     devices = lifesmart_EpGetAll(
-        param['appkey'], param['apptoken'], param['usertoken'], param['userid'])
+        param['apidomain'], param['appkey'], param['apptoken'], param['usertoken'], param['userid'])
     for dev in devices:
         if dev['me'] in exclude_items:
             continue
@@ -304,7 +304,7 @@ def setup(hass, config):
         brand = call.data['brand']
         keys = call.data['keys']
         restkey = lifesmart_Sendkeys(
-            param['appkey'], param['apptoken'], param['usertoken'], param['userid'], agt, ai, me, category, brand, keys)
+            param['apidomain'], param['appkey'], param['apptoken'], param['usertoken'], param['userid'], agt, ai, me, category, brand, keys)
         _LOGGER.debug("sendkey: %s", str(restkey))
 
     def send_ackeys(call):
@@ -320,7 +320,7 @@ def setup(hass, config):
         temp = call.data['temp']
         wind = call.data['wind']
         swing = call.data['swing']
-        restackey = lifesmart_Sendackeys(param['appkey'], param['apptoken'], param['usertoken'],
+        restackey = lifesmart_Sendackeys(param['apidomain'], param['appkey'], param['apptoken'], param['usertoken'],
                                          param['userid'], agt, ai, me, category, brand, keys, power, mode, temp, wind, swing)
         _LOGGER.debug("sendkey: %s", str(restackey))
 
@@ -512,7 +512,8 @@ def setup(hass, config):
 
     hass.services.register(DOMAIN, 'send_keys', send_keys)
     hass.services.register(DOMAIN, 'send_ackeys', send_ackeys)
-    ws = websocket.WebSocketApp("wss://api.apz.ilifesmart.com:8443/wsapp/",
+    ws_domain = str(param['apidomain'])
+    ws = websocket.WebSocketApp(f"wss://{ws_domain}:8443/wsapp/",
                                 on_message=on_message,
                                 on_error=on_error,
                                 on_close=on_close)
@@ -528,6 +529,7 @@ class LifeSmartDevice(Entity):
     def __init__(self, dev, idx, val, param):
         """Initialize the switch."""
         self._name = dev['name'] + "_" + idx
+        self._apidomain = param['apidomain']
         self._appkey = param['appkey']
         self._apptoken = param['apptoken']
         self._usertoken = param['usertoken']
@@ -576,7 +578,7 @@ class LifeSmartDevice(Entity):
     @staticmethod
     def _lifesmart_epset(self, type, val, idx):
         #self._tick = int(time.time())
-        url = "https://api.apz.ilifesmart.com/app/api.EpSet"
+        url = f"https://{self._apidomain}/app/api.EpSet"
         tick = int(time.time())
         appkey = self._appkey
         apptoken = self._apptoken
@@ -619,7 +621,7 @@ class LifeSmartDevice(Entity):
 
     @staticmethod
     def _lifesmart_epget(self):
-        url = "https://api.apz.ilifesmart.com/app/api.EpGet"
+        url = f"https://{self._apidomain}/app/api.EpGet"
         tick = int(time.time())
         appkey = self._appkey
         apptoken = self._apptoken

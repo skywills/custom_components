@@ -123,7 +123,7 @@ class LifeSmartLight(LifeSmartDevice, LightEntity):
         usertoken = self._usertoken
         userid = self._userid
         agt = self._agt
-        url = "https://api.apz.ilifesmart.com/app/irapi.GetRemoteList"
+        url = f"https://{self._apidomain}/app/irapi.GetRemoteList"
         tick = int(time.time())
         sdata = "method:GetRemoteList,agt:"+agt+",time:" + \
             str(tick)+",userid:"+userid+",usertoken:" + \
@@ -160,7 +160,7 @@ class LifeSmartLight(LifeSmartDevice, LightEntity):
         usertoken = self._usertoken
         userid = self._userid
         agt = self._agt
-        url = "https://api.apz.ilifesmart.com/app/irapi.GetRemote"
+        url = f"https://{self._apidomain}/app/irapi.GetRemote"
         tick = int(time.time())
         sdata = "method:GetRemote,agt:"+agt+",ai:"+ai+",needKeys:2,time:" + \
             str(tick)+",userid:"+userid+",usertoken:" + \
