@@ -4,6 +4,19 @@ lifesmart 设备接入 HomeAssistant插件
 
 更新说明
 -------  
+[2022年12月22日更新]
+增加了区域api, 如：亚太地区 api.apz.ilifesmart.com，在configuration.yaml文件中的格式变更为
+```
+lifesmart:
+  appkey: "your_appkey" 
+  apptoken: "your_apptoken"
+  username: "your_username" 
+  password: "your_password"
+  apidomain: "api.ilifesmart.com"
+  exclude:
+    - "0011" #需屏蔽设备的me值,这个暂时为必填项，可以填任意内容
+```
+
 [2022年6月1日更新]
 增加了登录接口，在configuration.yaml文件中的格式变更为
 ```
