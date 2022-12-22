@@ -143,54 +143,6 @@ DOMAIN = 'lifesmart'
 
 LifeSmart_STATE_MANAGER = 'lifesmart_wss'
 
-"""This function created by muchamucha"""
-"""Login to the server and get the token and userid"""
-
-
-def lifesmart_Login(uid, pwd, appkey):
-    url = "https://api.apz.ilifesmart.com/app/auth.login"
-
-    payload = json.dumps({
-        "uid": uid,
-        "pwd": pwd,
-        "appkey": appkey
-    })
-    headers = {'Content-Type': 'application/json'}
-
-    req = urllib.request.Request(url=url, data=payload.encode(
-        'utf-8'), headers=headers, method='POST')
-    response = json.loads(urllib.request.urlopen(req).read().decode('utf-8'))
-    if response['code'] == "success":
-        return response
-    else:
-        return False
-
-
-"""This function created by muchamucha"""
-"""Then, authenticating the user, get the usertoken"""
-
-
-def lifesmart_doAuth(userid, token, appkey):
-    url = "https://api.apz.ilifesmart.com/app/auth.do_auth"
-
-    payload = json.dumps({
-        "userid": userid,
-        "token": token,
-        "appkey": appkey,
-        "rgn": "apz"
-    })
-    headers = {
-        'Content-Type': 'application/json'
-    }
-
-    req = urllib.request.Request(url=url, data=payload.encode(
-        'utf-8'), headers=headers, method='POST')
-    response = json.loads(urllib.request.urlopen(req).read().decode('utf-8'))
-    if response['code'] == "success":
-        return response
-    else:
-        return False
-
 # origin
 
 
