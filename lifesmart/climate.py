@@ -1,16 +1,16 @@
 """Support for the LifeSmart climate devices."""
 import logging
 import time
-from homeassistant.components.climate import ENTITY_ID_FORMAT, ClimateEntity
+from homeassistant.components.climate import ENTITY_ID_FORMAT, ClimateEntity, HVACMode
 from homeassistant.components.climate.const import (
-    HVAC_MODE_AUTO,
-    HVAC_MODE_COOL,
-    HVAC_MODE_FAN_ONLY,
-    HVAC_MODE_HEAT,
-    HVAC_MODE_DRY,
+    # HVAC_MODE_AUTO,
+    # HVAC_MODE_COOL,
+    # HVAC_MODE_FAN_ONLY,
+    # HVAC_MODE_HEAT,
+    # HVAC_MODE_DRY,
+    # HVAC_MODE_OFF,    
     SUPPORT_FAN_MODE,
     SUPPORT_TARGET_TEMPERATURE,
-    HVAC_MODE_OFF,
 )
 # from homeassistant.components.fanEntity import SPEED_HIGH, SPEED_LOW, SPEED_MEDIUM
 #hass6.6 removed the components fan
@@ -31,15 +31,15 @@ from . import LifeSmartDevice
 _LOGGER = logging.getLogger(__name__)
 DEVICE_TYPE = "climate"
 
-LIFESMART_STATE_LIST = [HVAC_MODE_OFF,
-HVAC_MODE_AUTO,
-HVAC_MODE_FAN_ONLY,
-HVAC_MODE_COOL,
-HVAC_MODE_HEAT,
-HVAC_MODE_DRY]
+LIFESMART_STATE_LIST = [HVACMode.OFF,
+HVACMode.AUTO,
+HVACMode.FAN_ONLY,
+HVACMode.COOL,
+HVACMode.HEAT,
+HVACMode.DRY]
 
-LIFESMART_STATE_LIST2 = [HVAC_MODE_OFF,
-HVAC_MODE_HEAT]
+LIFESMART_STATE_LIST2 = [HVACMode.OFF,
+HVACMode.HEAT]
 
 FAN_MODES = [SPEED_LOW, SPEED_MEDIUM, SPEED_HIGH]
 GET_FAN_SPEED = { SPEED_LOW:15, SPEED_MEDIUM:45, SPEED_HIGH:76 }
